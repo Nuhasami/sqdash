@@ -35,7 +35,10 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "activerecord", "~> 8.0"
-  spec.add_dependency "pg", "~> 1.5"
+
+  # Database adapters — users install the one they need.
+  # At least one is required at runtime.
+  # Example: gem install sqd && gem install pg
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html

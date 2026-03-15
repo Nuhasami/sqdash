@@ -30,14 +30,27 @@ bundle add sqd
 
 sqd connects directly to your Solid Queue database. You need:
 
-- PostgreSQL with a Solid Queue schema (the `solid_queue_*` tables)
+- A database with the Solid Queue schema (`solid_queue_*` tables) — PostgreSQL, MySQL, or SQLite
 - Ruby >= 3.0
+- The database adapter gem for your database:
+
+```bash
+gem install pg       # PostgreSQL
+gem install mysql2   # MySQL
+gem install sqlite3  # SQLite
+```
 
 ## Usage
 
 ```bash
-# Connect using a CLI argument
+# PostgreSQL
 sqd postgres://user:pass@localhost:5432/myapp_queue
+
+# MySQL
+sqd mysql2://user:pass@localhost:3306/myapp_queue
+
+# SQLite
+sqd sqlite3:///path/to/queue.db
 
 # Or set the DATABASE_URL environment variable
 export DATABASE_URL=postgres://user:pass@localhost:5432/myapp_queue
