@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-module Sqd
+module Sqdash
   module Models
     class FailedExecution < ActiveRecord::Base
       self.table_name = "solid_queue_failed_executions"
 
-      belongs_to :job, class_name: "Sqd::Models::Job"
+      belongs_to :job, class_name: "Sqdash::Models::Job"
 
       def retry!
         transaction do

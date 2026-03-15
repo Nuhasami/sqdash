@@ -2,8 +2,8 @@
 
 source "https://rubygems.org"
 
-# Specify your gem's dependencies in sqd.gemspec
-gemspec
+# Specify your gem's dependencies in sqdash.gemspec
+gemspec name: "sqdash"
 
 gem "rake", "~> 13.0"
 

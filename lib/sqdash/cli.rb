@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 require "io/console"
+require "json"
 
-module Sqd
+module Sqdash
   class CLI
     DEFAULT_DB_URL = "postgres://sqd:sqd@localhost:5432/sqd_web_development_queue"
 
@@ -37,6 +38,8 @@ module Sqd
       @sort_dir = :desc
       @command_mode = false
       @command_text = ""
+      @detail_job = nil
+      @detail_scroll = 0
       trap_resize
       load_data
       full_draw
@@ -184,13 +187,21 @@ module Sqd
     end
 
     def draw_screen
+      if @detail_job
+        draw_detail_screen
+      else
+        draw_list_screen
+      end
+    end
+
+    def draw_list_screen
       print "\e[H" # cursor home, no clear
       w = terminal_width
       rows = visible_rows
       cols = column_widths
 
       # Header
-      puts truncate("\e[1;36m sqd \e[0m\e[36m Solid Queue Dashboard v#{Sqd::VERSION}\e[0m", w) + "\e[K"
+      puts truncate("\e[1;36m sqdash \e[0m\e[36m Solid Queue Dashboard v#{Sqdash::VERSION}\e[0m", w) + "\e[K"
       puts "\e[90m#{"─" * w}\e[0m"
 
       # Stats bar
@@ -251,7 +262,7 @@ module Sqd
         puts " \e[1;32m#{@message}\e[0m\e[K"
         @message = nil
       else
-        puts truncate(" \e[90m↑↓ Navigate  /Filter  :Command  r Retry  d Discard  q Quit\e[0m", w) + "\e[K"
+        puts truncate(" \e[90m↑↓ Navigate  Enter Detail  /Filter  :Command  r Retry  d Discard  q Quit\e[0m", w) + "\e[K"
       end
 
       # Position info
@@ -275,12 +286,18 @@ module Sqd
 
         unless key
           # No input — auto-refresh data on idle
-          load_data
+          if @detail_job
+            @detail_job.reload
+          else
+            load_data
+          end
           draw_screen
           next
         end
 
-        if @command_mode
+        if @detail_job
+          handle_detail_input(key)
+        elsif @command_mode
           handle_command_input(key)
         elsif @filter_mode
           handle_filter_input(key)
@@ -411,6 +428,8 @@ module Sqd
         retry_selected
       when "d"
         discard_selected
+      when "\r", "\n"
+        show_detail
       when " "
         load_data
       end
@@ -587,6 +606,124 @@ module Sqd
         remaining + " (#{matches.map { |m| m }.join("|")})"
       else
         " (no matches)"
+      end
+    end
+
+    def show_detail
+      return if @jobs.empty?
+      @detail_job = @jobs[@selected]
+      @detail_scroll = 0
+      full_draw
+    end
+
+    def build_detail_lines(job)
+      lines = []
+
+      lines << "\e[1mClass:\e[0m       #{job.class_name}"
+      lines << "\e[1mQueue:\e[0m       #{job.queue_name}"
+      lines << "\e[1mPriority:\e[0m    #{job.priority || "—"}"
+      lines << "\e[1mActive Job:\e[0m  #{job.active_job_id || "—"}"
+      lines << ""
+
+      status = job_status(job)
+      lines << "\e[1mStatus:\e[0m      #{status_text(status)}"
+      lines << ""
+
+      lines << "\e[1mCreated:\e[0m     #{job.created_at || "—"}"
+      lines << "\e[1mScheduled:\e[0m   #{job.scheduled_at || "—"}"
+      lines << "\e[1mFinished:\e[0m    #{job.finished_at || "—"}"
+      lines << ""
+
+      lines << "\e[1mArguments:\e[0m"
+      begin
+        args = JSON.parse(job.arguments)
+        JSON.pretty_generate(args).each_line { |l| lines << "  #{l.chomp}" }
+      rescue JSON::ParserError
+        lines << "  #{job.arguments}"
+      end
+
+      if status == :failed && job.failed_execution
+        lines << ""
+        lines << "\e[1;31mError:\e[0m"
+        error_text = job.failed_execution.error || "No error message"
+        error_text.each_line { |l| lines << "  #{l.chomp}" }
+      end
+
+      lines
+    end
+
+    def draw_detail_screen
+      print "\e[H"
+      w = terminal_width
+      rows = terminal_height
+
+      # Header
+      puts truncate("\e[1;36m sqdash \e[0m\e[36m Job ##{@detail_job.id}\e[0m", w) + "\e[K"
+      puts "\e[90m#{"─" * w}\e[0m"
+
+      # Content area: rows - 4 (header, separator, separator, footer)
+      content_rows = rows - 4
+      lines = build_detail_lines(@detail_job)
+
+      # Clamp scroll
+      max_scroll = [lines.length - content_rows, 0].max
+      @detail_scroll = [[@detail_scroll, max_scroll].min, 0].max
+
+      visible = lines[@detail_scroll, content_rows] || []
+      visible.each { |line| puts truncate("  #{line}", w) + "\e[K" }
+
+      # Clear remaining rows
+      (content_rows - visible.length).times { puts "\e[K" }
+
+      puts "\e[90m#{"─" * w}\e[0m"
+
+      if @message
+        puts " \e[1;32m#{@message}\e[0m\e[K"
+        @message = nil
+      else
+        puts truncate(" \e[90mEsc Back  ↑↓ Scroll  r Retry  d Discard  q Quit\e[0m", w) + "\e[K"
+      end
+    end
+
+    def handle_detail_input(key)
+      case key
+      when "\e"
+        next_chars = $stdin.read_nonblock(2) rescue nil
+        case next_chars
+        when "[A" # up
+          @detail_scroll = [@detail_scroll - 1, 0].max
+        when "[B" # down
+          @detail_scroll += 1
+        when nil # bare Escape — back to list
+          @detail_job = nil
+          full_draw
+        end
+      when "\u007F", "\b" # Backspace — back to list
+        @detail_job = nil
+        full_draw
+      when "r"
+        failed = Models::FailedExecution.find_by(job_id: @detail_job.id)
+        if failed
+          failed.retry!
+          @message = "Retried job #{@detail_job.id} (#{@detail_job.class_name})"
+          @detail_job.reload
+          load_data
+        else
+          @message = "Job #{@detail_job.id} is not failed"
+        end
+      when "d"
+        failed = Models::FailedExecution.find_by(job_id: @detail_job.id)
+        if failed
+          failed.discard!
+          @message = "Discarded job #{@detail_job.id} (#{@detail_job.class_name})"
+          @detail_job = nil
+          load_data
+          full_draw
+        else
+          @message = "Job #{@detail_job.id} is not failed"
+        end
+      when "q"
+        throw(:quit)
       end
     end
 

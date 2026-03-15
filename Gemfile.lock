@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    sqd (0.1.0)
+    sqdash (0.1.0)
       activerecord (~> 8.0)
 
 GEM
@@ -55,7 +55,7 @@ PLATFORMS
 DEPENDENCIES
   pg (~> 1.5)
   rake (~> 13.0)
-  sqd!
+  sqdash!
 
 BUNDLED WITH
    2.5.22

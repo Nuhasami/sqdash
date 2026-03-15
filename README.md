@@ -1,8 +1,8 @@
-# sqd
+# sqdash
 
 A terminal dashboard for Rails 8's Solid Queue.
 
-Solid Queue is the default Active Job backend in Rails 8, but it ships with no built-in UI. sqd gives you a fast, keyboard-driven TUI to monitor and manage jobs without leaving your terminal — no browser, no extra server, no mounted routes.
+Solid Queue is the default Active Job backend in Rails 8, but it ships with no built-in UI. sqdash gives you a fast, keyboard-driven TUI to monitor and manage jobs without leaving your terminal — no browser, no extra server, no mounted routes.
 
 ## Features
 
@@ -17,18 +17,18 @@ Solid Queue is the default Active Job backend in Rails 8, but it ships with no b
 ## Installation
 
 ```bash
-gem install sqd
+gem install sqdash
 ```
 
 Or add it to your Gemfile:
 
 ```bash
-bundle add sqd
+bundle add sqdash
 ```
 
 ## Prerequisites
 
-sqd connects directly to your Solid Queue database. You need:
+sqdash connects directly to your Solid Queue database. You need:
 
 - A database with the Solid Queue schema (`solid_queue_*` tables) — PostgreSQL, MySQL, or SQLite
 - Ruby >= 3.0
@@ -44,20 +44,20 @@ gem install sqlite3  # SQLite
 
 ```bash
 # PostgreSQL
-sqd postgres://user:pass@localhost:5432/myapp_queue
+sqdash postgres://user:pass@localhost:5432/myapp_queue
 
 # MySQL
-sqd mysql2://user:pass@localhost:3306/myapp_queue
+sqdash mysql2://user:pass@localhost:3306/myapp_queue
 
 # SQLite
-sqd sqlite3:///path/to/queue.db
+sqdash sqlite3:///path/to/queue.db
 
 # Or set the DATABASE_URL environment variable
 export DATABASE_URL=postgres://user:pass@localhost:5432/myapp_queue
-sqd
+sqdash
 
 # Falls back to default: postgres://sqd:sqd@localhost:5432/sqd_web_development_queue
-sqd
+sqdash
 ```
 
 Connection priority: **CLI argument** > **`DATABASE_URL` env var** > **built-in default**.
@@ -95,15 +95,15 @@ Arguments are optional — `sort` defaults to `sort created desc`, `view` defaul
 ## Development
 
 ```bash
-git clone https://github.com/nuhasami/sqd.git
-cd sqd
+git clone https://github.com/nuhasami/sqdash.git
+cd sqdash
 bin/setup
-bundle exec ruby exe/sqd
+bundle exec ruby exe/sqdash
 ```
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/nuhasami/sqd.
+Bug reports and pull requests are welcome on GitHub at https://github.com/nuhasami/sqdash.
 
 ## License
 

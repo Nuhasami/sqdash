@@ -2,7 +2,7 @@
 
 require "active_record"
 
-module Sqd
+module Sqdash
   class Database
     ADAPTERS = {
       "postgres" => { gem: "pg", adapter: "postgresql" },
