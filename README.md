@@ -13,6 +13,7 @@ Solid Queue is the default Active Job backend in Rails 8, but it ships with no b
 - Retry or discard failed jobs with a single keypress
 - k9s-style `:` command bar with Tab autocomplete
 - `/` search with inline autocomplete hints
+- Job detail view with arguments, timestamps, and error backtraces
 
 ## Installation
 
@@ -67,6 +68,7 @@ Connection priority: **CLI argument** > **`DATABASE_URL` env var** > **built-in 
 | Key | Action |
 |-----|--------|
 | `↑` `↓` | Navigate job list |
+| `Enter` | Open job detail view |
 | `/` | Filter jobs (fuzzy search across all columns) |
 | `:` | Command bar (sort, switch views) |
 | `Tab` | Autocomplete (in filter or command mode) |
