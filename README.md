@@ -44,6 +44,11 @@ gem install sqlite3  # SQLite
 ## Usage
 
 ```bash
+sqdash --help       # Show usage and keybindings
+sqdash --version    # Show version
+```
+
+```bash
 # PostgreSQL
 sqdash postgres://user:pass@localhost:5432/myapp_queue
 

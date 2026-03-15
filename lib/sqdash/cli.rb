@@ -7,6 +7,39 @@ module Sqdash
   class CLI
     DEFAULT_DB_URL = "postgres://sqd:sqd@localhost:5432/sqd_web_development_queue"
 
+    HELP_TEXT = <<~HELP
+      Usage: sqdash [database-url]
+
+      A terminal dashboard for Rails 8's Solid Queue.
+
+      Arguments:
+        database-url    Database connection URL (optional)
+                        Defaults to $DATABASE_URL or a local dev database
+
+      Options:
+        -h, --help      Show this help message
+        -v, --version   Show version
+
+      Keybindings:
+        ↑/↓             Navigate job list
+        Enter            View job details
+        /                Filter jobs (by class, queue, or ID)
+        :                Command mode (sort, view)
+        r                Retry failed job
+        d                Discard failed job
+        Space            Refresh data
+        q                Quit
+
+      Commands (in : mode):
+        sort created|id asc|desc    Sort jobs
+        view all|failed|completed|pending    Filter by status
+
+      Examples:
+        sqdash
+        sqdash postgres://user:pass@host:5432/myapp_production
+        DATABASE_URL=postgres://... sqdash
+    HELP
+
     COMMANDS = {
       "sort" => {
         "created" => ["asc", "desc"],
@@ -21,6 +54,14 @@ module Sqdash
     }.freeze
 
     def self.start
+      case ARGV[0]
+      when "-h", "--help"
+        puts HELP_TEXT
+        exit
+      when "-v", "--version"
+        puts "sqdash #{Sqdash::VERSION}"
+        exit
+      end
       new.run
     end
 
@@ -93,10 +134,14 @@ module Sqdash
 
     def terminal_height
       $stdout.winsize[0]
+    rescue
+      24
     end
 
     def terminal_width
       $stdout.winsize[1]
+    rescue
+      80
     end
 
     def visible_rows
@@ -251,8 +296,14 @@ module Sqdash
         end
       end
 
-      # Clear remaining rows
-      (rows - visible_jobs.length).times { puts "\e[K" }
+      # Empty state
+      if visible_jobs.empty?
+        puts "  \e[90mNo jobs found\e[0m\e[K"
+        (rows - 1).times { puts "\e[K" }
+      else
+        # Clear remaining rows
+        (rows - visible_jobs.length).times { puts "\e[K" }
+      end
 
       # Scrollbar hint
       puts "\e[90m#{"─" * w}\e[0m"
@@ -635,11 +686,15 @@ module Sqdash
       lines << ""
 
       lines << "\e[1mArguments:\e[0m"
-      begin
-        args = JSON.parse(job.arguments)
-        JSON.pretty_generate(args).each_line { |l| lines << "  #{l.chomp}" }
-      rescue JSON::ParserError
-        lines << "  #{job.arguments}"
+      if job.arguments.nil? || job.arguments.empty?
+        lines << "  —"
+      else
+        begin
+          args = JSON.parse(job.arguments)
+          JSON.pretty_generate(args).each_line { |l| lines << "  #{l.chomp}" }
+        rescue JSON::ParserError, TypeError
+          lines << "  #{job.arguments}"
+        end
       end
 
       if status == :failed && job.failed_execution

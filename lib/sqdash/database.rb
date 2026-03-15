@@ -15,8 +15,10 @@ module Sqdash
       require_adapter!(url)
       ActiveRecord::Base.establish_connection(url)
       ActiveRecord::Base.connection
-    rescue ActiveRecord::ConnectionNotEstablished => e
-      abort "\e[31mFailed to connect to database: #{e.message}\e[0m"
+    rescue => e
+      abort "\e[31mFailed to connect: #{e.message}\e[0m\n\n" \
+            "Usage: sqdash <database-url>\n" \
+            "Run sqdash --help for details."
     end
 
     def self.require_adapter!(url)
