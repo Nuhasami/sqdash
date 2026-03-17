@@ -28,7 +28,7 @@ module Sqdash
 
       Keybindings:
         ↑/↓             Navigate job list
-        Enter            View job details
+        ↵                View job details
         /                Filter jobs (by class, queue, or ID)
         :                Command mode (sort, view)
         r                Retry failed job
