@@ -99,7 +99,7 @@ module Sqdash
 
       # Header
       puts truncate("\e[1;36m sqdash \e[0m\e[36m Solid Queue Dashboard v#{Sqdash::VERSION}\e[0m", w) + "\e[K"
-      puts "\e[90m#{'─' * w}\e[0m"
+      puts "\e[90m#{'─' * w}\e[0m\e[K"
 
       # Stats bar
       total = Models::Job.count
@@ -129,7 +129,7 @@ module Sqdash
         puts "\e[K"
       end
 
-      puts "\e[90m#{'─' * w}\e[0m"
+      puts "\e[90m#{'─' * w}\e[0m\e[K"
 
       # Column headers
       puts truncate(
@@ -163,7 +163,7 @@ module Sqdash
       end
 
       # Scrollbar hint
-      puts "\e[90m#{'─' * w}\e[0m"
+      puts "\e[90m#{'─' * w}\e[0m\e[K"
 
       # Message or footer
       if @message
@@ -188,7 +188,7 @@ module Sqdash
 
       # Header
       puts truncate("\e[1;36m sqdash \e[0m\e[36m Job ##{@detail_job.id}\e[0m", w) + "\e[K"
-      puts "\e[90m#{'─' * w}\e[0m"
+      puts "\e[90m#{'─' * w}\e[0m\e[K"
 
       # Content area
       content_rows = rows - 4
@@ -203,7 +203,7 @@ module Sqdash
 
       (content_rows - visible.length).times { puts "\e[K" }
 
-      puts "\e[90m#{'─' * w}\e[0m"
+      puts "\e[90m#{'─' * w}\e[0m\e[K"
 
       if @message
         puts " \e[1;32m#{@message}\e[0m\e[K"
