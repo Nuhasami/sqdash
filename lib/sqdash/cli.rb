@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "io/console"
+require "io/wait"
 require "json"
 
 module Sqdash
@@ -42,8 +43,8 @@ module Sqdash
 
     COMMANDS = {
       "sort" => {
-        "created" => ["asc", "desc"],
-        "id" => ["asc", "desc"]
+        "created" => %w[asc desc],
+        "id" => %w[asc desc]
       },
       "view" => {
         "all" => [],
@@ -51,6 +52,19 @@ module Sqdash
         "completed" => [],
         "pending" => []
       }
+    }.freeze
+
+    STATUS_TEXT = {
+      failed: "\e[31m● failed\e[0m   ",
+      completed: "\e[32m● completed\e[0m",
+      pending: "\e[33m● pending\e[0m  "
+    }.freeze
+
+    VIEW_LABEL = {
+      all: "ALL",
+      failed: "\e[31mFAILED\e[0m",
+      completed: "\e[32mCOMPLETED\e[0m",
+      pending: "\e[33mPENDING\e[0m"
     }.freeze
 
     def self.start
@@ -71,7 +85,7 @@ module Sqdash
       @scroll_offset = 0
       @filter_text = ""
       @filter_mode = false
-      @view = :all  # :all, :failed, :completed, :pending
+      @view = :all # :all, :failed, :completed, :pending
       @jobs = []
       @failed_ids = []
       @message = nil
@@ -121,8 +135,8 @@ module Sqdash
       i = 0
       while i < str.length && visible_count < max
         if str[i] == "\e" && str[i..] =~ /\A(\e\[[0-9;]*m)/
-          result << $1
-          i += $1.length
+          result << ::Regexp.last_match(1)
+          i += ::Regexp.last_match(1).length
         else
           result << str[i]
           visible_count += 1
@@ -134,13 +148,13 @@ module Sqdash
 
     def terminal_height
       $stdout.winsize[0]
-    rescue
+    rescue StandardError
       24
     end
 
     def terminal_width
       $stdout.winsize[1]
-    rescue
+    rescue StandardError
       80
     end
 
@@ -166,7 +180,7 @@ module Sqdash
       @jobs = scope.to_a
 
       # Text filter (k9s style — filters across all visible columns)
-      if @filter_text.length > 0
+      if @filter_text.length.positive?
         query = @filter_text.downcase
         @jobs = @jobs.select do |job|
           job.class_name.downcase.include?(query) ||
@@ -176,7 +190,7 @@ module Sqdash
       end
 
       # Clamp selection
-      @selected = [[@selected, @jobs.length - 1].min, 0].max
+      @selected = @selected.clamp(0, [@jobs.length - 1, 0].max)
       adjust_scroll
     end
 
@@ -199,20 +213,11 @@ module Sqdash
     end
 
     def status_text(status)
-      case status
-      when :failed    then "\e[31m● failed\e[0m   "
-      when :completed then "\e[32m● completed\e[0m"
-      when :pending   then "\e[33m● pending\e[0m  "
-      end
+      STATUS_TEXT[status]
     end
 
     def view_label
-      case @view
-      when :all       then "ALL"
-      when :failed    then "\e[31mFAILED\e[0m"
-      when :completed then "\e[32mCOMPLETED\e[0m"
-      when :pending   then "\e[33mPENDING\e[0m"
-      end
+      VIEW_LABEL[@view]
     end
 
     def full_draw
@@ -247,14 +252,14 @@ module Sqdash
 
       # Header
       puts truncate("\e[1;36m sqdash \e[0m\e[36m Solid Queue Dashboard v#{Sqdash::VERSION}\e[0m", w) + "\e[K"
-      puts "\e[90m#{"─" * w}\e[0m"
+      puts "\e[90m#{'─' * w}\e[0m"
 
       # Stats bar
       total = Models::Job.count
       completed = Models::Job.where.not(finished_at: nil).count
       failed = @failed_ids.length
       pending = Models::ReadyExecution.count
-      sort_label = "#{@sort_column == :id ? "ID" : "Created"} #{@sort_dir == :asc ? "↑" : "↓"}"
+      sort_label = "#{@sort_column == :id ? 'ID' : 'Created'} #{@sort_dir == :asc ? '↑' : '↓'}"
       stats = " \e[1mTotal:\e[0m #{total}  \e[32m✓ #{completed}\e[0m  \e[31m✗ #{failed}\e[0m  \e[33m◌ #{pending}\e[0m  │  View: #{view_label}  │  Sort: #{sort_label}  │  Showing: #{@jobs.length}"
       puts truncate(stats, w) + "\e[K"
 
@@ -262,21 +267,26 @@ module Sqdash
       if @command_mode
         print "\e[?25h"
         hint = command_autocomplete_hint
-        puts truncate(" \e[1;35m:\e[0m #{@command_text}\e[90m#{hint}\e[0m  \e[90m<Tab> complete  <Enter> run  <Esc> cancel\e[0m", w) + "\e[K"
+        puts truncate(
+          " \e[1;35m:\e[0m #{@command_text}\e[90m#{hint}\e[0m  \e[90m<Tab> complete  <Enter> run  <Esc> cancel\e[0m", w
+        ) + "\e[K"
       elsif @filter_mode
         print "\e[?25h" # show cursor in filter mode
         hint = autocomplete_hint
-        puts truncate(" \e[1;33m/\e[0m #{@filter_text}\e[90m#{hint}\e[0m  \e[90m<Tab> complete  <Esc> cancel\e[0m", w) + "\e[K"
-      elsif @filter_text.length > 0
+        puts truncate(" \e[1;33m/\e[0m #{@filter_text}\e[90m#{hint}\e[0m  \e[90m<Tab> complete  <Esc> cancel\e[0m",
+                      w) + "\e[K"
+      elsif @filter_text.length.positive?
         puts truncate(" \e[33m/#{@filter_text}\e[0m  \e[90m(/ to edit, Esc to clear)\e[0m", w) + "\e[K"
       else
         puts "\e[K"
       end
 
-      puts "\e[90m#{"─" * w}\e[0m"
+      puts "\e[90m#{'─' * w}\e[0m"
 
       # Column headers
-      puts truncate("\e[1m  #{"ID".ljust(cols[:id])}#{"Job".ljust(cols[:job])}#{"Queue".ljust(cols[:queue])}#{"Status".ljust(cols[:status])}Created\e[0m", w) + "\e[K"
+      puts truncate(
+        "\e[1m  #{'ID'.ljust(cols[:id])}#{'Job'.ljust(cols[:job])}#{'Queue'.ljust(cols[:queue])}#{'Status'.ljust(cols[:status])}Created\e[0m", w
+      ) + "\e[K"
 
       # Job list
       visible_jobs = @jobs[@scroll_offset, rows] || []
@@ -306,21 +316,22 @@ module Sqdash
       end
 
       # Scrollbar hint
-      puts "\e[90m#{"─" * w}\e[0m"
+      puts "\e[90m#{'─' * w}\e[0m"
 
       # Message or footer
       if @message
         puts " \e[1;32m#{@message}\e[0m\e[K"
         @message = nil
       else
-        puts truncate(" \e[90m↑↓ Navigate  Enter Detail  /Filter  :Command  r Retry  d Discard  q Quit\e[0m", w) + "\e[K"
+        puts truncate(" \e[90m↑↓ Navigate  Enter Detail  /Filter  :Command  r Retry  d Discard  q Quit\e[0m",
+                      w) + "\e[K"
       end
 
       # Position info
-      if @jobs.length > 0
-        pos = "#{@selected + 1}/#{@jobs.length}"
-        print "\e[#{terminal_height};#{w - pos.length}H\e[90m#{pos}\e[0m"
-      end
+      return unless @jobs.length.positive?
+
+      pos = "#{@selected + 1}/#{@jobs.length}"
+      print "\e[#{terminal_height};#{w - pos.length}H\e[90m#{pos}\e[0m"
     end
 
     def handle_input
@@ -363,7 +374,7 @@ module Sqdash
     end
 
     def read_key
-      ready = IO.select([$stdin], nil, nil, 1)
+      ready = $stdin.wait_readable(1)
       return nil unless ready
 
       $stdin.getc
@@ -376,7 +387,11 @@ module Sqdash
         print "\e[?25l"
         load_data
       when "\e" # Escape — cancel filter (drain arrow key bytes)
-        $stdin.read_nonblock(2) rescue nil
+        begin
+          $stdin.read_nonblock(2)
+        rescue StandardError
+          nil
+        end
         @filter_mode = false
         @filter_text = ""
         print "\e[?25l"
@@ -453,7 +468,11 @@ module Sqdash
     def handle_normal_input(key)
       case key
       when "\e"
-        next_chars = $stdin.read_nonblock(2) rescue nil
+        next_chars = begin
+          $stdin.read_nonblock(2)
+        rescue StandardError
+          nil
+        end
         case next_chars
         when "[A" # up
           @selected = [0, @selected - 1].max
@@ -462,7 +481,7 @@ module Sqdash
           @selected = [@jobs.length - 1, @selected + 1].min
           adjust_scroll
         when nil # bare Escape — clear active filter
-          if @filter_text.length > 0
+          if @filter_text.length.positive?
             @filter_text = ""
             load_data
           end
@@ -501,7 +520,11 @@ module Sqdash
         @command_text = ""
         print "\e[?25l"
       when "\e" # Escape — cancel (drain arrow key bytes)
-        $stdin.read_nonblock(2) rescue nil
+        begin
+          $stdin.read_nonblock(2)
+        rescue StandardError
+          nil
+        end
         @command_mode = false
         @command_text = ""
         print "\e[?25l"
@@ -510,9 +533,7 @@ module Sqdash
       when "\u007F", "\b" # Backspace
         @command_text = @command_text[0..-2]
       else
-        if key.match?(/[[:print:]]/)
-          @command_text += key
-        end
+        @command_text += key if key.match?(/[[:print:]]/)
       end
     end
 
@@ -571,12 +592,14 @@ module Sqdash
           # After first word + space, complete second word
           subtree = COMMANDS[parts[0]]
           return unless subtree.is_a?(Hash)
+
           completed = complete_word("", subtree.keys)
           @command_text = "#{parts[0]} #{completed}" if completed
         when 2
           # After second word + space, complete third word
           subtree = COMMANDS.dig(parts[0], parts[1])
           return unless subtree.is_a?(Array) && subtree.any?
+
           completed = complete_word("", subtree)
           @command_text = "#{parts[0]} #{parts[1]} #{completed}" if completed
         end
@@ -588,11 +611,13 @@ module Sqdash
         when 2
           subtree = COMMANDS[parts[0]]
           return unless subtree.is_a?(Hash)
+
           completed = complete_word(parts[1], subtree.keys)
           @command_text = "#{parts[0]} #{completed}" if completed
         when 3
           subtree = COMMANDS.dig(parts[0], parts[1])
           return unless subtree.is_a?(Array) && subtree.any?
+
           completed = complete_word(parts[2], subtree)
           @command_text = "#{parts[0]} #{parts[1]} #{completed}" if completed
         end
@@ -621,10 +646,12 @@ module Sqdash
         when 1
           subtree = COMMANDS[parts[0]]
           return "" unless subtree.is_a?(Hash)
+
           hint_for_candidates("", subtree.keys)
         when 2
           subtree = COMMANDS.dig(parts[0], parts[1])
           return "" unless subtree.is_a?(Array) && subtree.any?
+
           hint_for_candidates("", subtree)
         else
           ""
@@ -636,10 +663,12 @@ module Sqdash
         when 2
           subtree = COMMANDS[parts[0]]
           return "" unless subtree.is_a?(Hash)
+
           hint_for_candidates(parts[1], subtree.keys)
         when 3
           subtree = COMMANDS.dig(parts[0], parts[1])
           return "" unless subtree.is_a?(Array) && subtree.any?
+
           hint_for_candidates(parts[2], subtree)
         else
           ""
@@ -654,7 +683,7 @@ module Sqdash
       elsif matches.length > 1
         prefix = common_prefix(matches)
         remaining = prefix[partial.length..] || ""
-        remaining + " (#{matches.map { |m| m }.join("|")})"
+        remaining + " (#{matches.map { |m| m }.join('|')})"
       else
         " (no matches)"
       end
@@ -662,6 +691,7 @@ module Sqdash
 
     def show_detail
       return if @jobs.empty?
+
       @detail_job = @jobs[@selected]
       @detail_scroll = 0
       full_draw
@@ -672,17 +702,17 @@ module Sqdash
 
       lines << "\e[1mClass:\e[0m       #{job.class_name}"
       lines << "\e[1mQueue:\e[0m       #{job.queue_name}"
-      lines << "\e[1mPriority:\e[0m    #{job.priority || "—"}"
-      lines << "\e[1mActive Job:\e[0m  #{job.active_job_id || "—"}"
+      lines << "\e[1mPriority:\e[0m    #{job.priority || '—'}"
+      lines << "\e[1mActive Job:\e[0m  #{job.active_job_id || '—'}"
       lines << ""
 
       status = job_status(job)
       lines << "\e[1mStatus:\e[0m      #{status_text(status)}"
       lines << ""
 
-      lines << "\e[1mCreated:\e[0m     #{job.created_at || "—"}"
-      lines << "\e[1mScheduled:\e[0m   #{job.scheduled_at || "—"}"
-      lines << "\e[1mFinished:\e[0m    #{job.finished_at || "—"}"
+      lines << "\e[1mCreated:\e[0m     #{job.created_at || '—'}"
+      lines << "\e[1mScheduled:\e[0m   #{job.scheduled_at || '—'}"
+      lines << "\e[1mFinished:\e[0m    #{job.finished_at || '—'}"
       lines << ""
 
       lines << "\e[1mArguments:\e[0m"
@@ -714,7 +744,7 @@ module Sqdash
 
       # Header
       puts truncate("\e[1;36m sqdash \e[0m\e[36m Job ##{@detail_job.id}\e[0m", w) + "\e[K"
-      puts "\e[90m#{"─" * w}\e[0m"
+      puts "\e[90m#{'─' * w}\e[0m"
 
       # Content area: rows - 4 (header, separator, separator, footer)
       content_rows = rows - 4
@@ -722,7 +752,7 @@ module Sqdash
 
       # Clamp scroll
       max_scroll = [lines.length - content_rows, 0].max
-      @detail_scroll = [[@detail_scroll, max_scroll].min, 0].max
+      @detail_scroll = @detail_scroll.clamp(0, max_scroll)
 
       visible = lines[@detail_scroll, content_rows] || []
       visible.each { |line| puts truncate("  #{line}", w) + "\e[K" }
@@ -730,7 +760,7 @@ module Sqdash
       # Clear remaining rows
       (content_rows - visible.length).times { puts "\e[K" }
 
-      puts "\e[90m#{"─" * w}\e[0m"
+      puts "\e[90m#{'─' * w}\e[0m"
 
       if @message
         puts " \e[1;32m#{@message}\e[0m\e[K"
@@ -743,7 +773,11 @@ module Sqdash
     def handle_detail_input(key)
       case key
       when "\e"
-        next_chars = $stdin.read_nonblock(2) rescue nil
+        next_chars = begin
+          $stdin.read_nonblock(2)
+        rescue StandardError
+          nil
+        end
         case next_chars
         when "[A" # up
           @detail_scroll = [@detail_scroll - 1, 0].max

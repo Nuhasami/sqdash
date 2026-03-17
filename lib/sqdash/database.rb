@@ -15,7 +15,7 @@ module Sqdash
       require_adapter!(url)
       ActiveRecord::Base.establish_connection(url)
       ActiveRecord::Base.connection
-    rescue => e
+    rescue StandardError => e
       abort "\e[31mFailed to connect: #{e.message}\e[0m\n\n" \
             "Usage: sqdash <database-url>\n" \
             "Run sqdash --help for details."
@@ -32,8 +32,8 @@ module Sqdash
 
       require config[:gem]
     rescue LoadError
-      abort "\e[31mMissing database adapter gem '#{config[:gem]}'. Install it with:\n" \
-            "  gem install #{config[:gem]}\e[0m"
+      abort "\e[31mMissing database adapter gem '#{config[:gem]}'. Install it with:\n  " \
+            "gem install #{config[:gem]}\e[0m"
     end
   end
 end

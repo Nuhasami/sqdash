@@ -1,0 +1,54 @@
+AllCops:
+  TargetRubyVersion: 3.2
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - "vendor/**/*"
+    - "bin/**/*"
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
+
+Style/Documentation:
+  Enabled: false
+
+Style/StringConcatenation:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 120
+  Exclude:
+    - "lib/sqdash/cli.rb"
+
+Metrics/MethodLength:
+  Max: 30
+  Exclude:
+    - "lib/sqdash/cli.rb"
+
+Metrics/ClassLength:
+  Max: 300
+  Exclude:
+    - "lib/sqdash/cli.rb"
+
+Metrics/AbcSize:
+  Max: 30
+  Exclude:
+    - "lib/sqdash/cli.rb"
+
+Metrics/CyclomaticComplexity:
+  Max: 15
+  Exclude:
+    - "lib/sqdash/cli.rb"
+
+Metrics/PerceivedComplexity:
+  Max: 15
+  Exclude:
+    - "lib/sqdash/cli.rb"
+
+Metrics/BlockLength:
+  Exclude:
+    - "test/**/*"
+    - "sqdash.gemspec"
