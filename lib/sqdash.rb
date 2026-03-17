@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "sqdash/version"
+require_relative "sqdash/config"
 require_relative "sqdash/database"
 require_relative "sqdash/models/job"
 require_relative "sqdash/models/failed_execution"

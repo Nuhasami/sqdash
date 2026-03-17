@@ -8,7 +8,7 @@ class CLITest < Minitest::Test
     Sqdash::Models::FailedExecution.delete_all
     Sqdash::Models::Job.delete_all
 
-    @cli = Sqdash::CLI.new
+    @cli = Sqdash::CLI.new(db_url: nil, config_path: nil)
     init_cli_state
   end
 
