@@ -326,7 +326,7 @@ class CLITest < Minitest::Test
 
     args_index = lines.index { |l| l.include?("Arguments:") }
     args_lines = lines[(args_index + 1)..].take_while { |l| !l.include?("\e[1m") && !l.empty? }
-    assert args_lines.any? { |l| l.include?("hello") }
+    assert(args_lines.any? { |l| l.include?("hello") })
   end
 
   def test_detail_lines_with_invalid_json_arguments
