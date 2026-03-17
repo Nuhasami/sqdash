@@ -33,7 +33,7 @@ bundle add sqdash
 sqdash connects directly to your Solid Queue database. You need:
 
 - A database with the Solid Queue schema (`solid_queue_*` tables) — PostgreSQL, MySQL, or SQLite
-- Ruby >= 3.0
+- Ruby >= 3.2
 - The database adapter gem for your database:
 
 ```bash
@@ -82,6 +82,47 @@ database_url: postgres://user:pass@localhost:5432/myapp_queue
 ```
 
 A project-local `.sqdash.yml` takes precedence over `~/.sqdash.yml`. You can also specify a config file explicitly with `--config` / `-c`.
+
+## How to use
+
+Once connected, sqdash shows a live dashboard of all your Solid Queue jobs. Here are common workflows:
+
+### Quick start
+
+```bash
+# Connect to your Rails app's queue database
+sqdash postgres://user:pass@localhost:5432/myapp_development
+
+# Or if you have a .sqdash.yml config file, just run:
+sqdash
+```
+
+### Investigating failed jobs
+
+1. Type `:view failed` and press `Enter` to show only failed jobs
+2. Use `↑`/`↓` to select a job
+3. Press `Enter` to see the full error backtrace and job arguments
+4. Press `r` to retry the job, or `d` to discard it
+5. Press `Esc` to go back to the list
+
+### Finding a specific job
+
+1. Press `/` to open the search filter
+2. Start typing a job class name (e.g., `UserMailer`), queue name, or job ID
+3. Press `Tab` to autocomplete — sqdash suggests matching class and queue names
+4. Press `Enter` to apply the filter
+5. Press `Esc` to clear the filter and see all jobs again
+
+### Sorting jobs
+
+1. Press `:` to open the command bar
+2. Type `sort created asc` to see oldest jobs first (useful for finding stuck jobs)
+3. Press `Enter` to apply
+4. Other options: `sort created desc` (default), `sort id asc`, `sort id desc`
+
+### Monitoring a queue in real time
+
+sqdash auto-refreshes data every second when idle. You can also press `Space` to manually refresh. The stats bar at the top shows live counts of total, completed, failed, and pending jobs.
 
 ### Keyboard shortcuts
 
