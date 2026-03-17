@@ -6,6 +6,9 @@ require_relative "sqdash/database"
 require_relative "sqdash/models/job"
 require_relative "sqdash/models/failed_execution"
 require_relative "sqdash/models/ready_execution"
+require_relative "sqdash/renderer"
+require_relative "sqdash/autocomplete"
+require_relative "sqdash/input_handler"
 require_relative "sqdash/cli"
 
 module Sqdash

@@ -22,31 +22,47 @@ Layout/LineLength:
   Max: 120
   Exclude:
     - "lib/sqdash/cli.rb"
+    - "lib/sqdash/renderer.rb"
 
 Metrics/MethodLength:
   Max: 30
   Exclude:
     - "lib/sqdash/cli.rb"
+    - "lib/sqdash/renderer.rb"
+    - "lib/sqdash/input_handler.rb"
+    - "lib/sqdash/autocomplete.rb"
 
 Metrics/ClassLength:
   Max: 300
   Exclude:
     - "lib/sqdash/cli.rb"
 
+Metrics/ModuleLength:
+  Max: 100
+  Exclude:
+    - "lib/sqdash/renderer.rb"
+    - "lib/sqdash/input_handler.rb"
+    - "lib/sqdash/autocomplete.rb"
+
 Metrics/AbcSize:
   Max: 30
   Exclude:
     - "lib/sqdash/cli.rb"
+    - "lib/sqdash/renderer.rb"
+    - "lib/sqdash/autocomplete.rb"
 
 Metrics/CyclomaticComplexity:
   Max: 15
   Exclude:
     - "lib/sqdash/cli.rb"
+    - "lib/sqdash/autocomplete.rb"
 
 Metrics/PerceivedComplexity:
   Max: 15
   Exclude:
     - "lib/sqdash/cli.rb"
+    - "lib/sqdash/renderer.rb"
+    - "lib/sqdash/autocomplete.rb"
 
 Metrics/BlockLength:
   Exclude:
