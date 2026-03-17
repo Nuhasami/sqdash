@@ -1,4 +1,4 @@
-# sqdash
+# sqdash: Solid Queue Terminal Dashboard
 
 A terminal dashboard for Rails 8's Solid Queue.
 
@@ -106,6 +106,7 @@ git clone https://github.com/nuhasami/sqdash.git
 cd sqdash
 bin/setup
 bundle exec ruby exe/sqdash
+rake test
 ```
 
 ## Contributing
