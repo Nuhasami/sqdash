@@ -168,7 +168,7 @@ module Sqdash
       if @filter_text.length.positive?
         query = "%#{@filter_text}%"
         scope = scope.where(
-          "LOWER(class_name) LIKE LOWER(?) OR LOWER(queue_name) LIKE LOWER(?) OR CAST(id AS CHAR) LIKE ?",
+          "LOWER(class_name) LIKE LOWER(?) OR LOWER(queue_name) LIKE LOWER(?) OR CAST(id AS TEXT) LIKE ?",
           query, query, query
         )
       end

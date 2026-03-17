@@ -155,7 +155,7 @@ module Sqdash
       elsif matches.length > 1
         prefix = common_prefix(matches)
         remaining = prefix[partial.length..] || ""
-        remaining + " (#{matches.map { |m| m }.join('|')})"
+        remaining + " (#{matches.join('|')})"
       else
         " (no matches)"
       end
