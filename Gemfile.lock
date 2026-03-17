@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    sqdash (0.1.1)
+    sqdash (0.2.0)
       activerecord (~> 8.0)
 
 GEM
