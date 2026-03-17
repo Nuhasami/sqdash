@@ -4,6 +4,8 @@ A terminal dashboard for Rails 8's Solid Queue.
 
 Solid Queue is the default Active Job backend in Rails 8, but it ships with no built-in UI. sqdash gives you a fast, keyboard-driven TUI to monitor and manage jobs without leaving your terminal — no browser, no extra server, no mounted routes.
 
+![sqdash demo](demo.gif)
+
 ## Features
 
 - Live overview of all Solid Queue jobs with status, queue, and timestamps
@@ -129,7 +131,7 @@ sqdash auto-refreshes data every second when idle. You can also press `Space` to
 | Key | Action |
 |-----|--------|
 | `↑` `↓` | Navigate job list |
-| `Enter` | Open job detail view |
+| `↵` | Open job detail view |
 | `/` | Filter jobs (fuzzy search across all columns) |
 | `:` | Command bar (sort, switch views) |
 | `Tab` | Autocomplete (in filter or command mode) |
