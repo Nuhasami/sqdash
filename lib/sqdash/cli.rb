@@ -9,17 +9,22 @@ module Sqdash
     DEFAULT_DB_URL = "postgres://sqd:sqd@localhost:5432/sqd_web_development_queue"
 
     HELP_TEXT = <<~HELP
-      Usage: sqdash [database-url]
+      Usage: sqdash [database-url] [options]
 
       A terminal dashboard for Rails 8's Solid Queue.
 
       Arguments:
         database-url    Database connection URL (optional)
-                        Defaults to $DATABASE_URL or a local dev database
 
       Options:
-        -h, --help      Show this help message
-        -v, --version   Show version
+        -c, --config FILE   Path to config file (default: .sqdash.yml or ~/.sqdash.yml)
+        -h, --help          Show this help message
+        -v, --version       Show version
+
+      Config file (~/.sqdash.yml or .sqdash.yml):
+        database_url: postgres://user:pass@host:5432/myapp
+
+      Connection priority: CLI arg > DATABASE_URL env > .sqdash.yml > ~/.sqdash.yml > default
 
       Keybindings:
         ↑/↓             Navigate job list
@@ -68,7 +73,16 @@ module Sqdash
     }.freeze
 
     def self.start
-      case ARGV[0]
+      args = ARGV.dup
+      config_path = nil
+
+      # Extract --config / -c flag
+      if (idx = args.index("-c") || args.index("--config"))
+        args.delete_at(idx)
+        config_path = args.delete_at(idx)
+      end
+
+      case args[0]
       when "-h", "--help"
         puts HELP_TEXT
         exit
@@ -76,7 +90,13 @@ module Sqdash
         puts "sqdash #{Sqdash::VERSION}"
         exit
       end
-      new.run
+
+      new(db_url: args[0], config_path: config_path).run
+    end
+
+    def initialize(db_url: nil, config_path: nil)
+      @db_url_arg = db_url
+      @config_path = config_path
     end
 
     def run
@@ -107,7 +127,10 @@ module Sqdash
     private
 
     def resolve_db_url
-      ARGV[0] || ENV["DATABASE_URL"] || DEFAULT_DB_URL
+      @db_url_arg ||
+        ENV["DATABASE_URL"] ||
+        Config.load(@config_path).database_url ||
+        DEFAULT_DB_URL
     end
 
     def cleanup

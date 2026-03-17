@@ -62,11 +62,25 @@ sqdash sqlite3:///path/to/queue.db
 export DATABASE_URL=postgres://user:pass@localhost:5432/myapp_queue
 sqdash
 
+# Use a specific config file
+sqdash --config /path/to/config.yml
+
 # Falls back to default: postgres://sqd:sqd@localhost:5432/sqd_web_development_queue
 sqdash
 ```
 
-Connection priority: **CLI argument** > **`DATABASE_URL` env var** > **built-in default**.
+Connection priority: **CLI argument** > **`DATABASE_URL` env var** > **`.sqdash.yml`** > **`~/.sqdash.yml`** > **built-in default**.
+
+### Config file
+
+Instead of passing a database URL every time, create a `.sqdash.yml` file in your project directory or home directory:
+
+```yaml
+# .sqdash.yml or ~/.sqdash.yml
+database_url: postgres://user:pass@localhost:5432/myapp_queue
+```
+
+A project-local `.sqdash.yml` takes precedence over `~/.sqdash.yml`. You can also specify a config file explicitly with `--config` / `-c`.
 
 ### Keyboard shortcuts
 
