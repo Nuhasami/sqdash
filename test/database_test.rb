@@ -50,40 +50,33 @@ class DatabaseTest < Minitest::Test
 
   def test_require_adapter_aborts_for_unsupported_scheme
     err = assert_raises(SystemExit) do
-      Sqdash::Database.require_adapter!("redis://localhost")
+      capture_io { Sqdash::Database.require_adapter!("redis://localhost") }
     end
     assert_equal 1, err.status
   end
 
   def test_require_adapter_aborts_for_missing_gem
-    assert_raises(SystemExit) do
-      scheme = "mysql2"
-      config = Sqdash::Database::ADAPTERS[scheme]
-      begin
-        require config[:gem]
-      rescue LoadError
-        abort "\e[31mMissing database adapter gem '#{config[:gem]}'.\e[0m"
-      end
+    err = assert_raises(SystemExit) do
+      capture_io { Sqdash::Database.require_adapter!("mysql2://localhost/test") }
     end
+    assert_equal 1, err.status
   end
 
   # --- connect! error handling ---
 
   def test_connect_aborts_when_establish_connection_raises
-    # Simulate a connection failure by stubbing establish_connection to raise
     ActiveRecord::Base.stub(:establish_connection, ->(_) { raise "connection refused" }) do
       err = assert_raises(SystemExit) do
-        Sqdash::Database.connect!("postgres://bad:bad@localhost:1/nonexistent")
+        capture_io { Sqdash::Database.connect!("postgres://bad:bad@localhost:1/nonexistent") }
       end
       assert_equal 1, err.status
     end
   end
 
   def test_connect_aborts_when_connection_verify_raises
-    # Simulate the connection object raising on .connection
     ActiveRecord::Base.stub(:connection, -> { raise "could not connect" }) do
       err = assert_raises(SystemExit) do
-        Sqdash::Database.connect!("sqlite3:///:memory:")
+        capture_io { Sqdash::Database.connect!("sqlite3:///:memory:") }
       end
       assert_equal 1, err.status
     end

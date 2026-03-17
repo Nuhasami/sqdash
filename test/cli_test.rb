@@ -274,6 +274,70 @@ class CLITest < Minitest::Test
     assert_equal :pending, @cli.send(:job_status, job)
   end
 
+  # --- --help and --version flags ---
+
+  def test_help_flag_prints_help_and_exits
+    original_argv = ARGV.dup
+    ARGV.replace(["--help"])
+    out, = capture_io do
+      assert_raises(SystemExit) { Sqdash::CLI.start }
+    end
+    assert_includes out, "Usage: sqdash"
+    assert_includes out, "Keybindings:"
+  ensure
+    ARGV.replace(original_argv)
+  end
+
+  def test_version_flag_prints_version_and_exits
+    original_argv = ARGV.dup
+    ARGV.replace(["--version"])
+    out, = capture_io do
+      assert_raises(SystemExit) { Sqdash::CLI.start }
+    end
+    assert_includes out, "sqdash #{Sqdash::VERSION}"
+  ensure
+    ARGV.replace(original_argv)
+  end
+
+  # --- build_detail_lines edge cases ---
+
+  def test_detail_lines_with_nil_arguments
+    job = Sqdash::Models::Job.create!(class_name: "NilJob", queue_name: "default", arguments: nil)
+    @cli.instance_variable_set(:@failed_ids, [])
+    lines = @cli.send(:build_detail_lines, job)
+
+    args_index = lines.index { |l| l.include?("Arguments:") }
+    assert_equal "  —", lines[args_index + 1]
+  end
+
+  def test_detail_lines_with_empty_arguments
+    job = Sqdash::Models::Job.create!(class_name: "EmptyJob", queue_name: "default", arguments: "")
+    @cli.instance_variable_set(:@failed_ids, [])
+    lines = @cli.send(:build_detail_lines, job)
+
+    args_index = lines.index { |l| l.include?("Arguments:") }
+    assert_equal "  —", lines[args_index + 1]
+  end
+
+  def test_detail_lines_with_valid_json_arguments
+    job = Sqdash::Models::Job.create!(class_name: "JsonJob", queue_name: "default", arguments: '["hello"]')
+    @cli.instance_variable_set(:@failed_ids, [])
+    lines = @cli.send(:build_detail_lines, job)
+
+    args_index = lines.index { |l| l.include?("Arguments:") }
+    args_lines = lines[(args_index + 1)..].take_while { |l| !l.include?("\e[1m") && !l.empty? }
+    assert args_lines.any? { |l| l.include?("hello") }
+  end
+
+  def test_detail_lines_with_invalid_json_arguments
+    job = Sqdash::Models::Job.create!(class_name: "BadJob", queue_name: "default", arguments: "not json{{{")
+    @cli.instance_variable_set(:@failed_ids, [])
+    lines = @cli.send(:build_detail_lines, job)
+
+    args_index = lines.index { |l| l.include?("Arguments:") }
+    assert_equal "  not json{{{", lines[args_index + 1]
+  end
+
   # --- selection clamping ---
 
   def test_selection_clamped_after_filter_reduces_list
