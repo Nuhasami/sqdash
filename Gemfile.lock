@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    sqdash (0.1.0)
+    sqdash (0.1.1)
       activerecord (~> 8.0)
 
 GEM
@@ -35,14 +35,15 @@ GEM
       concurrent-ruby (~> 1.0)
     json (2.18.1)
     logger (1.7.0)
-    minitest (6.0.2)
-      drb (~> 2.0)
-      prism (~> 1.5)
+    mini_portile2 (2.8.9)
+    minitest (5.27.0)
     pg (1.6.3)
     pg (1.6.3-arm64-darwin)
-    prism (1.9.0)
     rake (13.3.1)
     securerandom (0.4.1)
+    sqlite3 (2.9.2)
+      mini_portile2 (~> 2.8.0)
+    sqlite3 (2.9.2-arm64-darwin)
     timeout (0.6.0)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
@@ -53,9 +54,11 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  minitest (~> 5.0)
   pg (~> 1.5)
   rake (~> 13.0)
   sqdash!
+  sqlite3 (~> 2.0)
 
 BUNDLED WITH
    2.5.22
