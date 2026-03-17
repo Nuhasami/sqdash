@@ -170,7 +170,7 @@ module Sqdash
         puts " \e[1;32m#{@message}\e[0m\e[K"
         @message = nil
       else
-        puts truncate(" \e[90m↑↓ Navigate  Enter Detail  /Filter  :Command  r Retry  d Discard  q Quit\e[0m",
+        puts truncate(" \e[90m↑↓ Navigate  ↵ Detail  /Filter  :Command  r Retry  d Discard  q Quit\e[0m",
                       w) + "\e[K"
       end
 
