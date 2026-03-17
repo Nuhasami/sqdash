@@ -338,6 +338,75 @@ class CLITest < Minitest::Test
     assert_equal "  not json{{{", lines[args_index + 1]
   end
 
+  # --- pagination ---
+
+  def test_load_data_respects_page_size
+    # Create more jobs than PAGE_SIZE
+    (Sqdash::CLI::PAGE_SIZE + 10).times do |i|
+      Sqdash::Models::Job.create!(class_name: "Job#{i}", queue_name: "default")
+    end
+
+    @cli.send(:load_data)
+    jobs = @cli.instance_variable_get(:@jobs)
+    total = @cli.instance_variable_get(:@total_count)
+
+    assert_equal Sqdash::CLI::PAGE_SIZE, jobs.length
+    assert_equal Sqdash::CLI::PAGE_SIZE + 10, total
+    refute @cli.instance_variable_get(:@all_loaded)
+  end
+
+  def test_load_data_marks_all_loaded_when_under_page_size
+    3.times { |i| Sqdash::Models::Job.create!(class_name: "Job#{i}", queue_name: "default") }
+
+    @cli.send(:load_data)
+
+    assert @cli.instance_variable_get(:@all_loaded)
+    assert_equal 3, @cli.instance_variable_get(:@total_count)
+  end
+
+  def test_load_more_fetches_next_page
+    (Sqdash::CLI::PAGE_SIZE + 10).times do |i|
+      Sqdash::Models::Job.create!(class_name: "Job#{i}", queue_name: "default")
+    end
+
+    @cli.send(:load_data)
+    assert_equal Sqdash::CLI::PAGE_SIZE, @cli.instance_variable_get(:@jobs).length
+
+    @cli.send(:load_more)
+    assert_equal Sqdash::CLI::PAGE_SIZE + 10, @cli.instance_variable_get(:@jobs).length
+    assert @cli.instance_variable_get(:@all_loaded)
+  end
+
+  def test_load_more_noop_when_all_loaded
+    3.times { |i| Sqdash::Models::Job.create!(class_name: "Job#{i}", queue_name: "default") }
+
+    @cli.send(:load_data)
+    assert @cli.instance_variable_get(:@all_loaded)
+
+    @cli.send(:load_more)
+    assert_equal 3, @cli.instance_variable_get(:@jobs).length
+  end
+
+  def test_total_count_with_view_filter
+    Sqdash::Models::Job.create!(class_name: "PendingJob", queue_name: "default")
+    Sqdash::Models::Job.create!(class_name: "DoneJob", queue_name: "default", finished_at: Time.now)
+
+    @cli.instance_variable_set(:@view, :pending)
+    @cli.send(:load_data)
+
+    assert_equal 1, @cli.instance_variable_get(:@total_count)
+  end
+
+  def test_total_count_with_text_filter
+    Sqdash::Models::Job.create!(class_name: "SpecialJob", queue_name: "default")
+    Sqdash::Models::Job.create!(class_name: "OtherJob", queue_name: "default")
+
+    @cli.instance_variable_set(:@filter_text, "Special")
+    @cli.send(:load_data)
+
+    assert_equal 1, @cli.instance_variable_get(:@total_count)
+  end
+
   # --- selection clamping ---
 
   def test_selection_clamped_after_filter_reduces_list
@@ -361,6 +430,9 @@ class CLITest < Minitest::Test
     @cli.instance_variable_set(:@view, :all)
     @cli.instance_variable_set(:@jobs, [])
     @cli.instance_variable_set(:@failed_ids, [])
+    @cli.instance_variable_set(:@total_count, 0)
+    @cli.instance_variable_set(:@page, 0)
+    @cli.instance_variable_set(:@all_loaded, false)
     @cli.instance_variable_set(:@message, nil)
     @cli.instance_variable_set(:@sort_column, :created_at)
     @cli.instance_variable_set(:@sort_dir, :desc)

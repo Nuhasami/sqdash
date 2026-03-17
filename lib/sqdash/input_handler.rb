@@ -63,7 +63,8 @@ module Sqdash
           @selected = [0, @selected - 1].max
           adjust_scroll
         when "[B" # down
-          @selected = [@jobs.length - 1, @selected + 1].min
+          max = [@jobs.length - 1, 0].max
+          @selected = [max, @selected + 1].min
           adjust_scroll
         when nil # bare Escape — clear active filter
           if @filter_text.length.positive?
