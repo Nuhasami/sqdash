@@ -107,7 +107,8 @@ module Sqdash
       failed = @failed_ids.length
       pending = Models::ReadyExecution.count
       sort_label = "#{@sort_column == :id ? 'ID' : 'Created'} #{@sort_dir == :asc ? '↑' : '↓'}"
-      stats = " \e[1mTotal:\e[0m #{total}  \e[32m✓ #{completed}\e[0m  \e[31m✗ #{failed}\e[0m  \e[33m◌ #{pending}\e[0m  │  View: #{view_label}  │  Sort: #{sort_label}  │  Showing: #{@jobs.length}"
+      showing = @all_loaded ? @jobs.length.to_s : "#{@jobs.length}/#{@total_count}"
+      stats = " \e[1mTotal:\e[0m #{total}  \e[32m✓ #{completed}\e[0m  \e[31m✗ #{failed}\e[0m  \e[33m◌ #{pending}\e[0m  │  View: #{view_label}  │  Sort: #{sort_label}  │  Showing: #{showing}"
       puts truncate(stats, w) + "\e[K"
 
       # Filter / Command bar
@@ -176,7 +177,7 @@ module Sqdash
       # Position info
       return unless @jobs.length.positive?
 
-      pos = "#{@selected + 1}/#{@jobs.length}"
+      pos = "#{@selected + 1}/#{@total_count}"
       print "\e[#{terminal_height};#{w - pos.length}H\e[90m#{pos}\e[0m"
     end
 

@@ -7,6 +7,7 @@ Solid Queue is the default Active Job backend in Rails 8, but it ships with no b
 ## Features
 
 - Live overview of all Solid Queue jobs with status, queue, and timestamps
+- Paginated loading — handles 100k+ jobs without slowing down
 - View filters: all, failed, completed, pending
 - Sortable by created date or ID, ascending or descending
 - Fuzzy text filter across job class, queue name, and ID

@@ -36,6 +36,7 @@ Metrics/ClassLength:
   Max: 300
   Exclude:
     - "lib/sqdash/cli.rb"
+    - "test/cli_test.rb"
 
 Metrics/ModuleLength:
   Max: 100

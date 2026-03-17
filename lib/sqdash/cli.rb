@@ -85,6 +85,8 @@ module Sqdash
       @config_path = config_path
     end
 
+    PAGE_SIZE = 200
+
     def run
       Database.connect!(resolve_db_url)
       @selected = 0
@@ -94,6 +96,9 @@ module Sqdash
       @view = :all
       @jobs = []
       @failed_ids = []
+      @total_count = 0
+      @page = 0
+      @all_loaded = false
       @message = nil
       @sort_column = :created_at
       @sort_dir = :desc
@@ -127,7 +132,28 @@ module Sqdash
 
     def load_data
       @failed_ids = Models::FailedExecution.pluck(:job_id)
+      @page = 0
+      @all_loaded = false
 
+      scope = build_scope
+      @total_count = scope.count
+      @jobs = scope.limit(PAGE_SIZE).offset(0).to_a
+      @all_loaded = @jobs.length < PAGE_SIZE
+
+      @selected = @selected.clamp(0, [@jobs.length - 1, 0].max)
+      adjust_scroll
+    end
+
+    def load_more
+      return if @all_loaded
+
+      @page += 1
+      new_jobs = build_scope.limit(PAGE_SIZE).offset(@page * PAGE_SIZE).to_a
+      @jobs.concat(new_jobs)
+      @all_loaded = new_jobs.length < PAGE_SIZE
+    end
+
+    def build_scope
       scope = Models::Job.order(@sort_column => @sort_dir)
 
       case @view
@@ -139,19 +165,15 @@ module Sqdash
         scope = scope.where(finished_at: nil).where.not(id: @failed_ids)
       end
 
-      @jobs = scope.to_a
-
       if @filter_text.length.positive?
-        query = @filter_text.downcase
-        @jobs = @jobs.select do |job|
-          job.class_name.downcase.include?(query) ||
-            job.queue_name.downcase.include?(query) ||
-            job.id.to_s.include?(query)
-        end
+        query = "%#{@filter_text}%"
+        scope = scope.where(
+          "LOWER(class_name) LIKE LOWER(?) OR LOWER(queue_name) LIKE LOWER(?) OR CAST(id AS CHAR) LIKE ?",
+          query, query, query
+        )
       end
 
-      @selected = @selected.clamp(0, [@jobs.length - 1, 0].max)
-      adjust_scroll
+      scope
     end
 
     def adjust_scroll
@@ -160,6 +182,8 @@ module Sqdash
       elsif @selected >= @scroll_offset + visible_rows
         @scroll_offset = @selected - visible_rows + 1
       end
+
+      load_more if !@all_loaded && @selected >= @jobs.length - (PAGE_SIZE / 4)
     end
 
     def job_status(job)
