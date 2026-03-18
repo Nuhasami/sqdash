@@ -339,6 +339,38 @@ class InputHandlerTest < Minitest::Test
     assert_match(/1 skipped/, @cli.instance_variable_get(:@message))
   end
 
+  def test_bulk_retry_handles_errors_gracefully
+    j1 = Sqdash::Models::Job.create!(class_name: "J1", queue_name: "q")
+    Sqdash::Models::FailedExecution.create!(job_id: j1.id, error: "err")
+    @cli.send(:load_data)
+    @cli.instance_variable_get(:@marked_ids).add(j1.id)
+
+    # Stub retry! to raise on this execution
+    fe = Sqdash::Models::FailedExecution.find_by(job_id: j1.id)
+    fe.define_singleton_method(:retry!) { raise StandardError, "db error" }
+    Sqdash::Models::FailedExecution.stub(:where, [fe]) do
+      suppress_output { @cli.send(:bulk_retry) }
+    end
+
+    assert_match(/0 jobs/, @cli.instance_variable_get(:@message))
+    assert_match(/1 failed/, @cli.instance_variable_get(:@message))
+  end
+
+  def test_stale_marks_pruned_after_load_data
+    j1 = Sqdash::Models::Job.create!(class_name: "J1", queue_name: "q")
+    j2 = Sqdash::Models::Job.create!(class_name: "J2", queue_name: "q")
+    @cli.send(:load_data)
+    @cli.instance_variable_get(:@marked_ids).merge([j1.id, j2.id])
+
+    # Delete j2 so it's no longer in the result set
+    j2.destroy
+    @cli.send(:load_data)
+
+    marked = @cli.instance_variable_get(:@marked_ids)
+    assert_includes marked, j1.id
+    refute_includes marked, j2.id
+  end
+
   private
 
   def init_cli_state

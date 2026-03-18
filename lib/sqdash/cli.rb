@@ -143,6 +143,7 @@ module Sqdash
       @jobs = scope.limit(PAGE_SIZE).offset(0).to_a
       @all_loaded = @jobs.length < PAGE_SIZE
 
+      @marked_ids &= Set.new(@jobs.map(&:id)) if @marked_ids
       @selected = @selected.clamp(0, [@jobs.length - 1, 0].max)
       adjust_scroll
     end

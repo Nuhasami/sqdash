@@ -322,29 +322,27 @@ module Sqdash
     end
 
     def bulk_retry
-      failed = Models::FailedExecution.where(job_id: @marked_ids.to_a)
-      count = 0
-      failed.each do |f|
-        f.retry!
-        count += 1
-      end
-      skipped = @marked_ids.size - count
-      @message = "Retried #{count} job#{'s' unless count == 1}"
-      @message += " (#{skipped} skipped)" if skipped.positive?
-      @marked_ids.clear
-      load_data
+      bulk_action(:retry!, "Retried")
     end
 
     def bulk_discard
+      bulk_action(:discard!, "Discarded")
+    end
+
+    def bulk_action(method, verb)
       failed = Models::FailedExecution.where(job_id: @marked_ids.to_a)
       count = 0
+      errors = 0
       failed.each do |f|
-        f.discard!
+        f.public_send(method)
         count += 1
+      rescue StandardError
+        errors += 1
       end
-      skipped = @marked_ids.size - count
-      @message = "Discarded #{count} job#{'s' unless count == 1}"
+      skipped = @marked_ids.size - count - errors
+      @message = "#{verb} #{count} job#{'s' unless count == 1}"
       @message += " (#{skipped} skipped)" if skipped.positive?
+      @message += " (#{errors} failed)" if errors.positive?
       @marked_ids.clear
       load_data
     end
