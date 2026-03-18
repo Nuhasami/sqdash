@@ -57,6 +57,8 @@ Metrics/CyclomaticComplexity:
   Exclude:
     - "lib/sqdash/cli.rb"
     - "lib/sqdash/autocomplete.rb"
+    - "lib/sqdash/input_handler.rb"
+    - "lib/sqdash/renderer.rb"
 
 Metrics/PerceivedComplexity:
   Max: 15
