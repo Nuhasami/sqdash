@@ -142,15 +142,17 @@ module Sqdash
       visible_jobs.each_with_index do |job, i|
         actual_index = @scroll_offset + i
         status = job_status(job)
-        is_selected = actual_index == @selected
+        is_cursor = actual_index == @selected
+        is_marked = @marked_ids.include?(job.id)
         created = job.created_at&.strftime("%m/%d %H:%M") || "—"
 
         line = "#{job.id.to_s.ljust(cols[:id])}#{job.class_name[0, cols[:job] - 1].ljust(cols[:job])}#{job.queue_name[0, cols[:queue] - 1].ljust(cols[:queue])}#{status_text(status)}  #{created}"
 
-        if is_selected
-          puts truncate("\e[7m▸ #{line}\e[0m", w) + "\e[K"
+        prefix = is_marked ? "\e[33m✓\e[0m" : " "
+        if is_cursor
+          puts truncate("\e[7m#{prefix} #{line}\e[0m", w) + "\e[K"
         else
-          puts truncate("  #{line}", w) + "\e[K"
+          puts truncate("#{prefix} #{line}", w) + "\e[K"
         end
       end
 
@@ -169,8 +171,11 @@ module Sqdash
       if @message
         puts " \e[1;32m#{@message}\e[0m\e[K"
         @message = nil
+      elsif @marked_ids.any?
+        puts truncate(" \e[33m#{@marked_ids.size} selected\e[0m  \e[90mr Retry all  d Discard all  x Toggle  X All  Esc Clear\e[0m",
+                      w) + "\e[K"
       else
-        puts truncate(" \e[90m↑↓ Navigate  ↵ Detail  /Filter  :Command  r Retry  d Discard  q Quit\e[0m",
+        puts truncate(" \e[90m↑↓ Navigate  ↵ Detail  x Select  /Filter  :Command  r Retry  d Discard  q Quit\e[0m",
                       w) + "\e[K"
       end
 

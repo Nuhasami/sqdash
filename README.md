@@ -107,6 +107,8 @@ sqdash
 4. Press `r` to retry the job, or `d` to discard it
 5. Press `Esc` to go back to the list
 
+For bulk actions, press `x` to mark multiple jobs, then `r` or `d` to retry or discard all marked jobs at once. Press `X` to select all.
+
 ### Finding a specific job
 
 1. Press `/` to open the search filter
@@ -132,11 +134,14 @@ sqdash auto-refreshes data every second when idle. You can also press `Space` to
 |-----|--------|
 | `↑` `↓` | Navigate job list |
 | `↵` | Open job detail view |
+| `x` | Toggle select job (for bulk actions) |
+| `X` | Select/deselect all jobs |
 | `/` | Filter jobs (fuzzy search across all columns) |
 | `:` | Command bar (sort, switch views) |
 | `Tab` | Autocomplete (in filter or command mode) |
-| `r` | Retry selected failed job |
-| `d` | Discard selected failed job |
+| `r` | Retry failed job(s) — bulk if selected |
+| `d` | Discard failed job(s) — bulk if selected |
+| `Esc` | Clear selection, filter, or go back |
 | `Space` | Refresh data |
 | `q` | Quit |
 

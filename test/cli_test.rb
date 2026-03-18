@@ -440,6 +440,7 @@ class CLITest < Minitest::Test
     @cli.instance_variable_set(:@command_text, "")
     @cli.instance_variable_set(:@detail_job, nil)
     @cli.instance_variable_set(:@detail_scroll, 0)
+    @cli.instance_variable_set(:@marked_ids, Set.new)
   end
 
   def create_jobs

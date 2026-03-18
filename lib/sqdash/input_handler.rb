@@ -66,8 +66,10 @@ module Sqdash
           max = [@jobs.length - 1, 0].max
           @selected = [max, @selected + 1].min
           adjust_scroll
-        when nil # bare Escape — clear active filter
-          if @filter_text.length.positive?
+        when nil # bare Escape — clear active filter or selection
+          if @marked_ids.any?
+            @marked_ids.clear
+          elsif @filter_text.length.positive?
             @filter_text = ""
             load_data
           end
@@ -80,6 +82,10 @@ module Sqdash
       when ":"
         @command_mode = true
         @command_text = ""
+      when "x"
+        toggle_mark
+      when "X"
+        toggle_mark_all
       when "r"
         retry_selected
       when "d"
@@ -245,10 +251,47 @@ module Sqdash
       @view = view
       @selected = 0
       @scroll_offset = 0
+      @marked_ids.clear
       load_data
     end
 
+    def toggle_mark
+      job = @jobs[@selected]
+      return unless job
+
+      if @marked_ids.include?(job.id)
+        @marked_ids.delete(job.id)
+      else
+        @marked_ids.add(job.id)
+      end
+    end
+
+    def toggle_mark_all
+      visible_ids = @jobs.map(&:id)
+      if visible_ids.all? { |id| @marked_ids.include?(id) }
+        visible_ids.each { |id| @marked_ids.delete(id) }
+      else
+        visible_ids.each { |id| @marked_ids.add(id) }
+      end
+    end
+
     def retry_selected
+      if @marked_ids.any?
+        bulk_retry
+      else
+        retry_single
+      end
+    end
+
+    def discard_selected
+      if @marked_ids.any?
+        bulk_discard
+      else
+        discard_single
+      end
+    end
+
+    def retry_single
       job = @jobs[@selected]
       return unless job
 
@@ -263,7 +306,7 @@ module Sqdash
       load_data
     end
 
-    def discard_selected
+    def discard_single
       job = @jobs[@selected]
       return unless job
 
@@ -275,6 +318,32 @@ module Sqdash
 
       failed.discard!
       @message = "Discarded job #{job.id} (#{job.class_name})"
+      load_data
+    end
+
+    def bulk_retry
+      bulk_action(:retry!, "Retried")
+    end
+
+    def bulk_discard
+      bulk_action(:discard!, "Discarded")
+    end
+
+    def bulk_action(method, verb)
+      failed = Models::FailedExecution.where(job_id: @marked_ids.to_a)
+      count = 0
+      errors = 0
+      failed.each do |f|
+        f.public_send(method)
+        count += 1
+      rescue StandardError
+        errors += 1
+      end
+      skipped = @marked_ids.size - count - errors
+      @message = "#{verb} #{count} job#{'s' unless count == 1}"
+      @message += " (#{skipped} skipped)" if skipped.positive?
+      @message += " (#{errors} failed)" if errors.positive?
+      @marked_ids.clear
       load_data
     end
   end

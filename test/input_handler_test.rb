@@ -229,6 +229,148 @@ class InputHandlerTest < Minitest::Test
     assert_match(/not failed/, @cli.instance_variable_get(:@message))
   end
 
+  # --- mark / bulk actions ---
+
+  def test_x_toggles_mark_on
+    create_jobs
+    @cli.send(:load_data)
+    @cli.instance_variable_set(:@selected, 0)
+
+    suppress_output { @cli.send(:handle_normal_input, "x") }
+
+    job = @cli.instance_variable_get(:@jobs)[0]
+    assert_includes @cli.instance_variable_get(:@marked_ids), job.id
+  end
+
+  def test_x_toggles_mark_off
+    create_jobs
+    @cli.send(:load_data)
+    job = @cli.instance_variable_get(:@jobs)[0]
+    @cli.instance_variable_get(:@marked_ids).add(job.id)
+
+    @cli.instance_variable_set(:@selected, 0)
+    suppress_output { @cli.send(:handle_normal_input, "x") }
+
+    refute_includes @cli.instance_variable_get(:@marked_ids), job.id
+  end
+
+  def test_shift_x_selects_all
+    create_jobs
+    @cli.send(:load_data)
+    jobs = @cli.instance_variable_get(:@jobs)
+
+    suppress_output { @cli.send(:handle_normal_input, "X") }
+
+    marked = @cli.instance_variable_get(:@marked_ids)
+    jobs.each { |j| assert_includes marked, j.id }
+  end
+
+  def test_shift_x_deselects_all_when_all_selected
+    create_jobs
+    @cli.send(:load_data)
+    jobs = @cli.instance_variable_get(:@jobs)
+    jobs.each { |j| @cli.instance_variable_get(:@marked_ids).add(j.id) }
+
+    suppress_output { @cli.send(:handle_normal_input, "X") }
+
+    assert_empty @cli.instance_variable_get(:@marked_ids)
+  end
+
+  def test_escape_clears_marks
+    create_jobs
+    @cli.send(:load_data)
+    @cli.instance_variable_get(:@marked_ids).add(1)
+
+    suppress_output { @cli.send(:handle_normal_input, "\e") }
+
+    assert_empty @cli.instance_variable_get(:@marked_ids)
+  end
+
+  def test_switch_view_clears_marks
+    create_jobs
+    @cli.send(:load_data)
+    @cli.instance_variable_get(:@marked_ids).add(1)
+
+    @cli.send(:switch_view, :failed)
+
+    assert_empty @cli.instance_variable_get(:@marked_ids)
+  end
+
+  def test_bulk_retry
+    j1 = Sqdash::Models::Job.create!(class_name: "J1", queue_name: "q")
+    j2 = Sqdash::Models::Job.create!(class_name: "J2", queue_name: "q")
+    Sqdash::Models::FailedExecution.create!(job_id: j1.id, error: "err")
+    Sqdash::Models::FailedExecution.create!(job_id: j2.id, error: "err")
+    @cli.send(:load_data)
+    @cli.instance_variable_get(:@marked_ids).merge([j1.id, j2.id])
+
+    suppress_output { @cli.send(:handle_normal_input, "r") }
+
+    assert_match(/Retried 2 jobs/, @cli.instance_variable_get(:@message))
+    assert_empty @cli.instance_variable_get(:@marked_ids)
+    assert_equal 2, Sqdash::Models::ReadyExecution.count
+  end
+
+  def test_bulk_discard
+    j1 = Sqdash::Models::Job.create!(class_name: "J1", queue_name: "q")
+    j2 = Sqdash::Models::Job.create!(class_name: "J2", queue_name: "q")
+    Sqdash::Models::FailedExecution.create!(job_id: j1.id, error: "err")
+    Sqdash::Models::FailedExecution.create!(job_id: j2.id, error: "err")
+    @cli.send(:load_data)
+    @cli.instance_variable_get(:@marked_ids).merge([j1.id, j2.id])
+
+    suppress_output { @cli.send(:handle_normal_input, "d") }
+
+    assert_match(/Discarded 2 jobs/, @cli.instance_variable_get(:@message))
+    assert_empty @cli.instance_variable_get(:@marked_ids)
+  end
+
+  def test_bulk_retry_skips_non_failed
+    j1 = Sqdash::Models::Job.create!(class_name: "J1", queue_name: "q")
+    j2 = Sqdash::Models::Job.create!(class_name: "J2", queue_name: "q")
+    Sqdash::Models::FailedExecution.create!(job_id: j1.id, error: "err")
+    # j2 is not failed
+    @cli.send(:load_data)
+    @cli.instance_variable_get(:@marked_ids).merge([j1.id, j2.id])
+
+    suppress_output { @cli.send(:handle_normal_input, "r") }
+
+    assert_match(/Retried 1 job/, @cli.instance_variable_get(:@message))
+    assert_match(/1 skipped/, @cli.instance_variable_get(:@message))
+  end
+
+  def test_bulk_retry_handles_errors_gracefully
+    j1 = Sqdash::Models::Job.create!(class_name: "J1", queue_name: "q")
+    Sqdash::Models::FailedExecution.create!(job_id: j1.id, error: "err")
+    @cli.send(:load_data)
+    @cli.instance_variable_get(:@marked_ids).add(j1.id)
+
+    # Stub retry! to raise on this execution
+    fe = Sqdash::Models::FailedExecution.find_by(job_id: j1.id)
+    fe.define_singleton_method(:retry!) { raise StandardError, "db error" }
+    Sqdash::Models::FailedExecution.stub(:where, [fe]) do
+      suppress_output { @cli.send(:bulk_retry) }
+    end
+
+    assert_match(/0 jobs/, @cli.instance_variable_get(:@message))
+    assert_match(/1 failed/, @cli.instance_variable_get(:@message))
+  end
+
+  def test_stale_marks_pruned_after_load_data
+    j1 = Sqdash::Models::Job.create!(class_name: "J1", queue_name: "q")
+    j2 = Sqdash::Models::Job.create!(class_name: "J2", queue_name: "q")
+    @cli.send(:load_data)
+    @cli.instance_variable_get(:@marked_ids).merge([j1.id, j2.id])
+
+    # Delete j2 so it's no longer in the result set
+    j2.destroy
+    @cli.send(:load_data)
+
+    marked = @cli.instance_variable_get(:@marked_ids)
+    assert_includes marked, j1.id
+    refute_includes marked, j2.id
+  end
+
   private
 
   def init_cli_state
@@ -249,6 +391,7 @@ class InputHandlerTest < Minitest::Test
     @cli.instance_variable_set(:@command_text, "")
     @cli.instance_variable_set(:@detail_job, nil)
     @cli.instance_variable_set(:@detail_scroll, 0)
+    @cli.instance_variable_set(:@marked_ids, Set.new)
   end
 
   def create_jobs

@@ -29,10 +29,12 @@ module Sqdash
       Keybindings:
         ↑/↓             Navigate job list
         ↵                View job details
+        x                Toggle select job (for bulk actions)
+        X                Select/deselect all visible jobs
         /                Filter jobs (by class, queue, or ID)
         :                Command mode (sort, view)
-        r                Retry failed job
-        d                Discard failed job
+        r                Retry failed job(s) — bulk if selected
+        d                Discard failed job(s) — bulk if selected
         Space            Refresh data
         q                Quit
 
@@ -106,6 +108,7 @@ module Sqdash
       @command_text = ""
       @detail_job = nil
       @detail_scroll = 0
+      @marked_ids = Set.new
       trap_resize
       load_data
       full_draw
@@ -140,6 +143,7 @@ module Sqdash
       @jobs = scope.limit(PAGE_SIZE).offset(0).to_a
       @all_loaded = @jobs.length < PAGE_SIZE
 
+      @marked_ids &= Set.new(@jobs.map(&:id)) if @marked_ids
       @selected = @selected.clamp(0, [@jobs.length - 1, 0].max)
       adjust_scroll
     end
